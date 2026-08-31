@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   // "ADMIN", "DOCTOR", "RECEPTIONIST", "NURSE", "PHARMACIST", "LAB_TECHNICIAN"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  doctorProfile Doctor?
+}
+
+model Patient {
+  id               String   @id @default(cuid())
+  patientId        String   @unique // e.g. PT-1001
+  name             String
+  dateOfBirth      DateTime
+  gender           String
+  bloodGroup       String
+  phone            String
+  email            String?
+  address          String
+  emergencyContact String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  appointments     Appointment[]
+  prescriptions    Prescription[]
+  labTests         LabTest[]
+  invoices         Invoice[]
+  admissions       Admission[]
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  doctors   Doctor[]
+}
+
+model Doctor {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctorId       String   @unique // e.g. DR-1001
+  specialization String
+  departmentId   String
+  department     Department @relation(fields: [departmentId], references: [id])
+  qualification  String
+  experience     Int      // in years
+  consultationFee Float
+  availability   String   // e.g., "09:00 AM - 01:00 PM"
+  
+  appointments   Appointment[]
+  prescriptions  Prescription[]
+}
+
+model Appointment {
+  id           String   @id @default(cuid())
+  patientId    String
+  patient      Patient  @relation(fields: [patientId], references: [id])
+  doctorId     String
+  doctor       Doctor   @relation(fields: [doctorId], references: [id])
+  date         DateTime
+  time         String
+  status       String   // "SCHEDULED", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"
+  reason       String
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Medicine {
+  id          String   @id @default(cuid())
+  name        String
+  stock       Int
+  price       Float
+  expiryDate  DateTime
+  batchNumber String
+  supplier    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Prescription {
+  id          String   @id @default(cuid())
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  doctorId    String
+  doctor      Doctor   @relation(fields: [doctorId], references: [id])
+  diagnosis   String
+  date        DateTime @default(now())
+  notes       String?
+  items       String   // JSON string of medicine items
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LabTest {
+  id          String   @id @default(cuid())
+  name        String
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  status      String   // "PENDING", "PROCESSING", "COMPLETED"
+  result      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique // e.g. INV-1001
+  patientId     String
+  patient       Patient  @relation(fields: [patientId], references: [id])
+  subtotal      Float
+  discount      Float    @default(0)
+  tax           Float    @default(0)
+  totalAmount   Float
+  amountPaid    Float    @default(0)
+  balanceDue    Float
+  status        String   // "PAID", "PARTIAL", "UNPAID"
+  date          DateTime @default(now())
+  services      String   // JSON string of services billed
+  paymentMethod String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Bed {
+  id          String   @id @default(cuid())
+  bedNumber   String   @unique
+  type        String   // "GENERAL", "ICU", "EMERGENCY"
+  status      String   // "AVAILABLE", "OCCUPIED", "RESERVED", "MAINTENANCE"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  admissions  Admission[]
+}
+
+model Admission {
+  id            String   @id @default(cuid())
+  patientId     String
+  patient       Patient  @relation(fields: [patientId], references: [id])
+  bedId         String
+  bed           Bed      @relation(fields: [bedId], references: [id])
+  admissionDate DateTime
+  dischargeDate DateTime?
+  reason        String
+  diagnosis     String?
+  status        String   // "ADMITTED", "DISCHARGED"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
